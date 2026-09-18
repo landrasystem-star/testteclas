@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>🔍 Test BT Simplificado</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            background: #0a0f1a; color: #f1f5f9;
+            min-height: 100vh; padding: 15px;
+        }
+        h1 { font-size: 1.1rem; color: #fbbf24; text-align: center; margin-bottom: 12px; }
+
+        button#btnPlay {
+            background: linear-gradient(135deg, #22c55e, #16a34a);
+            color: #fff; border: none; padding: 16px;
+            border-radius: 30px; font-size: 1rem; font-weight: 700;
+            cursor: pointer; width: 100%; max-width: 420px;
+            display: block; margin: 0 auto 12px;
+        }
+        button#btnPlay.pausa { background: linear-gradient(135deg, #ef4444, #dc2626); }
+
+        .estado {
+            text-align: center; font-size: 0.85rem;
+            color: #64748b; margin-bottom: 12px;
+        }
+        .estado.on { color: #4ade80; font-weight: 700; }
+
+        .log {
+            background: #0d1420; border: 2px solid #1e2a3a;
+            border-radius: 14px; padding: 12px;
+            max-width: 420px; margin: 0 auto 12px;
+            min-height: 250px; max-height: 400px;
+            overflow-y: auto; font-family: monospace;
+        }
+        .log h2 {
+            color: #94a3b8; font-size: 0.7rem;
+            text-transform: uppercase; margin-bottom: 8px;
+            padding-bottom: 6px; border-bottom: 1px solid #1e2a3a;
+        }
+        .linea {
+            padding: 6px 8px; margin-bottom: 4px;
+            border-radius: 6px; font-size: 0.7rem;
+            word-break: break-all;
+        }
+        .linea.key { background: #1a2634; color: #fbbf24; border-left: 3px solid #fbbf24; }
+        .linea.ms { background: #2a1a3a; color: #c4b5fd; border-left: 3px solid #8b5cf6; }
+        .linea.audio { background: #1a2634; color: #4ade80; border-left: 3px solid #4ade80; }
+        .linea.info { background: #1a2634; color: #60a5fa; border-left: 3px solid #60a5fa; }
+
+        audio { display: none; }
+    </style>
+</head>
+<body>
+
+    <h1>🔍 Test BT - African Best Sounds</h1>
+
+    <button id="btnPlay" onclick="togglePlay()">▶️ REPRODUCIR AUDIO</button>
+    <div class="estado" id="estado">Audio detenido</div>
+
+    <div class="log">
+        <h2>📋 Eventos detectados</h2>
+        <div id="log"></div>
+    </div>
+
+    <audio id="audio" preload="none" crossorigin="anonymous" loop>
+        <source src="https://radio.afrikanabestsounds.com/listen/live_love/radio.mp3" type="audio/mpeg">
+    </audio>
+
+<script>
+const audio = document.getElementById('audio');
+const btnPlay = document.getElementById('btnPlay');
+const estado = document.getElementById('estado');
+const logEl = document.getElementById('log');
+
+let contador = 0;
+
+function log(tipo, texto) {
+    contador++;
+    const linea = document.createElement('div');
+    linea.className = 'linea ' + tipo;
+    const hora = new Date().toLocaleTimeString();
+    linea.textContent = `#${contador} [${hora}] ${texto}`;
+    logEl.insertBefore(linea, logEl.firstChild);
+    console.log(`[${tipo}] ${texto}`);
+}
+
+// ============================================================
+// 🎵 AUDIO
+// ============================================================
+function togglePlay() {
+    if (audio.paused) {
+        audio.play().then(() => {
+            btnPlay.textContent = '⏸️ PAUSAR AUDIO';
+            btnPlay.classList.add('pausa');
+            estado.className = 'estado on';
+            estado.textContent = '● Reproduciendo';
+            configurarMediaSession();
+            ponerMetadata();
+            log('info', '▶️ Audio iniciado - MediaSession configurada');
+        }).catch(e => {
+            log('info', '❌ Error: ' + e.message);
+            alert('Error: ' + e.message);
+        });
+    } else {
+        audio.pause();
+    }
+}
+
+audio.addEventListener('play', () => {
+    btnPlay.textContent = '⏸️ PAUSAR AUDIO';
+    btnPlay.classList.add('pausa');
+    estado.className = 'estado on';
+    estado.textContent = '● Reproduciendo';
+    log('audio', 'play');
+    ponerMetadata();
+});
+
+audio.addEventListener('pause', () => {
+    btnPlay.textContent = '▶️ REPRODUCIR AUDIO';
+    btnPlay.classList.remove('pausa');
+    estado.className = 'estado';
+    estado.textContent = 'Audio pausado';
+    log('audio', 'pause');
+    ponerMetadata();
+});
+
+// ============================================================
+// ⌨️ TECLADO
+// ============================================================
+document.addEventListener('keydown', function(e) {
+    log('key', `keydown → key="${e.key}" code="${e.code}" keyCode=${e.keyCode}`);
+}, true);
+
+// ============================================================
+// 🎵 MEDIASESSION
+// ============================================================
+function configurarMediaSession() {
+    if (!('mediaSession' in navigator)) {
+        log('info', '❌ MediaSession NO soportado');
+        return;
+    }
+    const acciones = ['play', 'pause', 'stop', 'nexttrack', 'previoustrack',
+                      'seekforward', 'seekbackward'];
+    acciones.forEach(action => {
+        try {
+            navigator.mediaSession.setActionHandler(action, () => {
+                log('ms', `MediaSession → ${action}`);
+                if (action === 'play') audio.play().catch(() => {});
+                if (action === 'pause') audio.pause();
+            });
+        } catch(e) {
+            log('info', `⚠️ No se pudo registrar "${action}": ${e.message}`);
+        }
+    });
+    log('info', '🎵 MediaSession handlers registrados');
+}
+
+function ponerMetadata() {
+    if (!('mediaSession' in navigator)) return;
+    try {
+        navigator.mediaSession.metadata = new MediaMetadata({
+            title: 'African Best Sounds',
+            artist: 'Live Love',
+            album: 'Test BT'
+        });
+        navigator.mediaSession.playbackState = audio.paused ? 'paused' : 'playing';
+    } catch(e) {}
+}
+
+// Reafirmar MediaSession
+setInterval(() => {
+    if (!audio.paused) ponerMetadata();
+}, 3000);
+
+log('info', '✅ Test listo. Pulsa REPRODUCIR y luego el anillo.');
+</script>
+</body>
+</html>
