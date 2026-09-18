@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>🔍 Test de Teclas BT (con MediaSession activa)</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            background: #0a0f1a;
+            color: #f1f5f9;
+            min-height: 100vh;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        h1 { font-size: 1.4rem; color: #fbbf24; margin-bottom: 8px; text-align: center; }
+        .sub { color: #94a3b8; font-size: 0.8rem; margin-bottom: 15px; text-align: center; }
+
+        /* Panel de control del audio "señuelo" */
+        .audio-panel {
+            background: #0d1420;
+            border: 2px solid #8b5cf6;
+            border-radius: 16px;
+            padding: 14px;
+            width: 100%;
+            max-width: 500px;
+            margin-bottom: 15px;
+            text-align: center;
+        }
+        .audio-panel .titulo {
+            color: #8b5cf6;
+            font-size: 0.7rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 10px;
+        }
+        .audio-panel button {
+            background: linear-gradient(135deg, #8b5cf6, #7c3aed);
+            color: #fff;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 30px;
+            font-size: 0.9rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.2s;
+            margin: 4px;
+        }
+        .audio-panel button:hover { transform: scale(1.05); }
+        .audio-panel button.activo {
+            background: linear-gradient(135deg, #22c55e, #16a34a);
+        }
+        .audio-panel .estado {
+            color: #64748b;
+            font-size: 0.7rem;
+            margin-top: 8px;
+        }
+        .audio-panel .estado.on { color: #4ade80; font-weight: 700; }
+
+        .grande {
+            background: #0d1420;
+            border: 2px solid #1e2a3a;
+            border-radius: 20px;
+            padding: 30px 20px;
+            text-align: center;
+            width: 100%;
+            max-width: 500px;
+            margin-bottom: 15px;
+            transition: all 0.2s;
+        }
+        .grande.activo {
+            border-color: #4ade80;
+            box-shadow: 0 0 30px rgba(74, 222, 128, 0.3);
+        }
+        .grande .emoji { font-size: 3rem; display: block; margin-bottom: 10px; }
+        .grande .nombre {
+            font-size: 1.6rem; font-weight: 700; color: #fbbf24;
+            word-break: break-all; font-family: monospace;
+        }
+        .grande .vacio { color: #475569; font-size: 1rem; font-style: italic; }
+
+        .detalles {
+            display: grid; grid-template-columns: 1fr 1fr; gap: 10px;
+            width: 100%; max-width: 500px; margin-bottom: 15px;
+        }
+        .dato {
+            background: #0d1420; border: 1px solid #1e2a3a;
+            border-radius: 12px; padding: 10px; text-align: center;
+        }
+        .dato .label {
+            color: #64748b; font-size: 0.55rem;
+            text-transform: uppercase; letter-spacing: 1px; margin-bottom: 4px;
+        }
+        .dato .valor {
+            color: #f1f5f9; font-size: 0.9rem; font-weight: 600;
+            font-family: monospace; word-break: break-all;
+        }
+
+        .historial {
+            width: 100%; max-width: 500px; background: #0d1420;
+            border: 1px solid #1e2a3a; border-radius: 16px;
+            padding: 12px; flex: 1; min-height: 180px; overflow-y: auto;
+        }
+        .historial h2 {
+            color: #94a3b8; font-size: 0.7rem;
+            text-transform: uppercase; letter-spacing: 1px;
+            margin-bottom: 10px; padding-bottom: 8px;
+            border-bottom: 1px solid #1e2a3a;
+        }
+        .entrada {
+            display: flex; justify-content: space-between;
+            align-items: center; padding: 8px 10px;
+            background: #1a2634; border-radius: 8px;
+            margin-bottom: 6px; font-size: 0.7rem;
+            font-family: monospace; gap: 8px; flex-wrap: wrap;
+        }
+        .entrada.tipo-ms { background: #2a1a3a; border-left: 3px solid #8b5cf6; }
+        .entrada.tipo-key { background: #1a2634; border-left: 3px solid #fbbf24; }
+        .entrada .key { color: #fbbf24; font-weight: 700; }
+        .entrada .code { color: #60a5fa; }
+        .entrada .keyCode { color: #4ade80; }
+        .entrada .hora { color: #475569; font-size: 0.55rem; }
+
+        .botones {
+            display: flex; gap: 10px; margin-top: 12px;
+            width: 100%; max-width: 500px;
+        }
+        .botones button {
+            flex: 1; background: linear-gradient(135deg, #ef4444, #dc2626);
+            color: #fff; border: none; padding: 12px;
+            border-radius: 30px; font-size: 0.85rem;
+            font-weight: 600; cursor: pointer; transition: all 0.2s;
+        }
+        .botones button:hover { transform: scale(1.03); }
+        .botones button.azul { background: linear-gradient(135deg, #3b82f6, #2563eb); }
+
+        .aviso {
+            background: rgba(139, 92, 246, 0.1);
+            border: 1px solid rgba(139, 92, 246, 0.3);
+            color: #c4b5fd; padding: 12px 16px;
+            border-radius: 12px; font-size: 0.7rem;
+            max-width: 500px; margin-top: 12px;
+            text-align: center; line-height: 1.5;
+        }
+        .aviso strong { color: #f1f5f9; }
+
+        audio { display: none; }
+    </style>
+</head>
+<body>
+
+    <h1>🔍 Test de Teclas BT</h1>
+    <div class="sub">Con MediaSession activa (para que el anillo envíe comandos)</div>
+
+    <!-- 🎵 Audio silencioso: hace que la pestaña "posea" la MediaSession -->
+    <div class="audio-panel">
+        <div class="titulo">🎵 Paso 1: Activar sesión de audio</div>
+        <button id="btnActivar" onclick="activarAudio()">▶️ ACTIVAR (toca aquí primero)</button>
+        <div class="estado" id="estadoAudio">Sesión inactiva — el anillo NO responderá</div>
+        <audio id="audioSenuelo" loop preload="auto"></audio>
+    </div>
+
+    <div class="grande" id="pantalla">
+        <span class="emoji">👆</span>
+        <div class="vacio" id="mensaje">Esperando tecla...</div>
+    </div>
+
+    <div class="detalles">
+        <div class="dato"><div class="label">key</div><div class="valor" id="dKey">—</div></div>
+        <div class="dato"><div class="label">code</div><div class="valor" id="dCode">—</div></div>
+        <div class="dato"><div class="label">keyCode</div><div class="valor" id="dKeyCode">—</div></div>
+        <div class="dato"><div class="label">origen</div><div class="valor" id="dOrigen">—</div></div>
+    </div>
+
+    <div class="historial">
+        <h2>📋 Historial (últimas 30 pulsaciones)</h2>
+        <div id="lista"></div>
+    </div>
+
+    <div class="botones">
+        <button class="azul" onclick="copiar()">📋 Copiar</button>
+        <button onclick="limpiar()">🗑️ Limpiar</button>
+    </div>
+
+    <div class="aviso">
+        💡 <strong>Pasos:</strong><br>
+        1. Pulsa <strong>ACTIVAR</strong> arriba (debe ponerse verde)<br>
+        2. Conecta el anillo/reloj por Bluetooth<br>
+        3. Pulsa los botones del anillo<br>
+        4. Aparecerá aquí cada comando detectado
+    </div>
+
+<script>
+// ============================================================
+// 🎵 AUDIO SEÑUELO: hace que la pestaña posea la MediaSession
+// ============================================================
+const audioSenuelo = document.getElementById('audioSenuelo');
+const btnActivar = document.getElementById('btnActivar');
+const estadoAudio = document.getElementById('estadoAudio');
+
+// Genera un tono silencioso (volumen 0) para que dure indefinidamente
+function generarSilencio() {
+    // WAV silencioso en base64, 1 segundo
+    const wav = 'data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQAAAAA=';
+    audioSenuelo.src = wav;
+}
+
+let audioActivo = false;
+
+function activarAudio() {
+    generarSilencio();
+    audioSenuelo.volume = 0; // silencio total, pero la sesión sigue activa
+    audioSenuelo.play().then(() => {
+        audioActivo = true;
+        btnActivar.classList.add('activo');
+        btnActivar.textContent = '✅ ACTIVO — Pulsa el anillo';
+        estadoAudio.className = 'estado on';
+        estadoAudio.textContent = '● Sesión activa — el anillo responderá ahora';
+        configurarMediaSession();
+    }).catch(err => {
+        alert('No se pudo activar el audio: ' + err.message + '\nToca otra vez el botón.');
+    });
+}
+
+// Reanudar si el navegador la pausa
+audioSenuelo.addEventListener('pause', () => {
+    if (audioActivo) {
+        setTimeout(() => audioSenuelo.play().catch(() => {}), 100);
+    }
+});
+
+// ============================================================
+// 🔍 DETECTOR
+// ============================================================
+const pantalla = document.getElementById('pantalla');
+const mensaje = document.getElementById('mensaje');
+const dKey = document.getElementById('dKey');
+const dCode = document.getElementById('dCode');
+const dKeyCode = document.getElementById('dKeyCode');
+const dOrigen = document.getElementById('dOrigen');
+const lista = document.getElementById('lista');
+
+let registros = [];
+let timeoutActivo = null;
+
+function registrar(info) {
+    info.hora = new Date().toLocaleTimeString();
+    registros.push(info);
+    if (registros.length > 30) registros.shift();
+
+    pantalla.classList.add('activo');
+    if (timeoutActivo) clearTimeout(timeoutActivo);
+    timeoutActivo = setTimeout(() => pantalla.classList.remove('activo'), 500);
+
+    pantalla.querySelector('.emoji').textContent = info.origen === 'MediaSession' ? '🎵' : '✅';
+    mensaje.className = 'nombre';
+    mensaje.textContent = info.key;
+
+    dKey.textContent = info.key;
+    dCode.textContent = info.code;
+    dKeyCode.textContent = info.keyCode;
+    dOrigen.textContent = info.origen;
+
+    renderHistorial();
+}
+
+function renderHistorial() {
+    if (registros.length === 0) {
+        lista.innerHTML = '<div style="color:#475569;text-align:center;padding:20px;font-size:0.75rem;">Aún no se ha pulsado ninguna tecla</div>';
+        return;
+    }
+    let html = '';
+    for (let i = registros.length - 1; i >= 0; i--) {
+        const r = registros[i];
+        const clase = r.origen === 'MediaSession' ? 'tipo-ms' : 'tipo-key';
+        html += `<div class="entrada ${clase}">
+            <span class="key">${r.key}</span>
+            <span class="code">${r.code}</span>
+            <span class="keyCode">${r.keyCode}</span>
+            <span class="hora">${r.hora}</span>
+        </div>`;
+    }
+    lista.innerHTML = html;
+}
+
+function limpiar() {
+    registros = [];
+    dKey.textContent = '—'; dCode.textContent = '—';
+    dKeyCode.textContent = '—'; dOrigen.textContent = '—';
+    pantalla.querySelector('.emoji').textContent = '👆';
+    mensaje.className = 'vacio';
+    mensaje.textContent = 'Esperando tecla...';
+    renderHistorial();
+}
+
+function copiar() {
+    if (registros.length === 0) { alert('Nada que copiar todavía'); return; }
+    let texto = '📋 COMANDOS REGISTRADOS:\n\n';
+    registros.forEach(r => {
+        texto += `[${r.origen}] key: ${r.key} | code: ${r.code} | keyCode: ${r.keyCode}\n`;
+    });
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(texto)
+            .then(() => alert('✅ Copiado'))
+            .catch(() => { console.log(texto); alert('Se ha impreso en la consola.'); });
+    } else {
+        console.log(texto);
+        alert('Se ha impreso en la consola.');
+    }
+}
+
+// ============================================================
+// ESCUCHAR TECLADO
+// ============================================================
+document.addEventListener('keydown', function(e) {
+    registrar({
+        key: e.key || '(vacío)',
+        code: e.code || '(vacío)',
+        keyCode: e.keyCode || 0,
+        origen: 'Teclado'
+    });
+}, true);
+
+// ============================================================
+// 🎵 MEDIASESSION — Aquí caerán los comandos del anillo
+// ============================================================
+function configurarMediaSession() {
+    if (!('mediaSession' in navigator)) {
+        alert('⚠️ MediaSession no soportado en este navegador');
+        return;
+    }
+    const acciones = ['play', 'pause', 'stop', 'nexttrack', 'previoustrack',
+                      'seekforward', 'seekbackward', 'seekto'];
+    acciones.forEach(action => {
+        try {
+            navigator.mediaSession.setActionHandler(action, () => {
+                registrar({
+                    key: 'MediaSession: ' + action,
+                    code: action,
+                    keyCode: '—',
+                    origen: 'MediaSession'
+                });
+            });
+        } catch(e) {}
+    });
+    console.log('✅ MediaSession configurada');
+}
+
+// Poner un metadata mínimo (a veces hace falta para que Android enrute)
+function ponerMetadata() {
+    if (!('mediaSession' in navigator)) return;
+    try {
+        navigator.mediaSession.metadata = new MediaMetadata({
+            title: 'Test BT',
+            artist: 'Detector',
+            album: 'Pulsa el anillo'
+        });
+        navigator.mediaSession.playbackState = 'playing';
+    } catch(e) {}
+}
+
+audioSenuelo.addEventListener('play', ponerMetadata);
+audioSenuelo.addEventListener('playing', ponerMetadata);
+
+renderHistorial();
+console.log('🔍 Test listo. Pulsa ACTIVAR y luego los botones del anillo.');
+</script>
+</body>
+</html>
